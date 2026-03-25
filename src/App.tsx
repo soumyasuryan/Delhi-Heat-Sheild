@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import Contact from "./pages/contact";
 
 
+
 const queryClient = new QueryClient();
 
 
@@ -29,14 +30,19 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>          {/* ⬅ BrowserRouter moved outside */}
-        <AuthProvider>         {/* ⬅ AuthProvider inside */}
+      {/* ✅ Only ONE toast system */}
+      <Sonner position="top-center" richColors closeButton />
+
+      <BrowserRouter>        
+        <AuthProvider>         
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Index />
+              </ProtectedRoute>
+            } />
             <Route path="/subscribe" element={<SubscribePage />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="*" element={<NotFound />} />

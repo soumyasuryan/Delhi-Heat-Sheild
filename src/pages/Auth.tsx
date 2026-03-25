@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft } from "lucide-react";
-import { toast } from "sonner"; // ⬅ add this
+import { toast } from "sonner";
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -15,23 +15,28 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const { login, signup } = useAuth();
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  try {
-    if (isSignup) {
-      await signup(name, email, password);
-      toast.success("Account created successfully! ");
-    } else {
-      await login(email, password);
-      toast.success("Welcome back!"); 
+    e.preventDefault();
+    setLoading(true); // ✅ start loading
+
+    try {
+      if (isSignup) {
+        await signup(name, email, password);
+        toast.success("Account created successfully!");
+      } else {
+        await login(email, password);
+        toast.success("Welcome back!");
+      }
+      navigate("/dashboard");
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false); // ✅ stop loading
     }
-    navigate("/dashboard");
-  } catch (err: any) {
-    toast.error(err.message); 
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4 relative">
@@ -66,23 +71,27 @@ const Auth = () => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* ✅ disable interaction + slight fade while loading */}
+          <form
+            onSubmit={handleSubmit}
+            className={`space-y-4 ${loading ? "opacity-70 pointer-events-none" : ""}`}
+          >
             {isSignup && (
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium">Name</Label>
+                <Label htmlFor="name">Name</Label>
                 <Input
                   id="name"
                   type="text"
                   placeholder="Your name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="bg-background border-border"
+                  disabled={loading}
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -90,12 +99,12 @@ const Auth = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-background border-border"
+                disabled={loading}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -103,12 +112,24 @@ const Auth = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-background border-border"
+                disabled={loading}
               />
             </div>
 
-            <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-5">
-              {isSignup ? "Create Account" : "Log in"}
+            {/* ✅ Button with spinner */}
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 font-semibold py-5 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  {isSignup ? "Creating account..." : "Logging in..."}
+                </>
+              ) : (
+                isSignup ? "Create Account" : "Log in"
+              )}
             </Button>
           </form>
 
