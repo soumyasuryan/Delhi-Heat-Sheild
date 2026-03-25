@@ -23,11 +23,4 @@ turns fatal.
 Built to support Delhi's most heat-exposed communities — outdoor workers, 
 elderly residents, and informal settlement dwellers — by giving city officials 
 and citizens real-time visibility into heat risk zones.
-```
 
----
-
-**Topics/tags** to add to your GitHub repo:
-```
-react typescript flask supabase python heat-vulnerability 
-climate-tech public-health delhi india jwt tailwindcss
