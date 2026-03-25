@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Risk Map — Delhi's HeatShield</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:       #ede9e3;
+  --surface:  #f5f2ee;
+  --white:    #ffffff;
+  --border:   #ddd8d0;
+  --border2:  #e8e3dc;
+  --text:     #1a1a1a;
+  --muted:    #6b6560;
+  --muted2:   #9b948c;
+  --accent:   #c1440e;
+  --accent2:  #d4561a;
+  --accent-bg:#fdf1ec;
+  --accent-border:#e8c4b4;
+  --panel-w:  300px;
+  --nav-h:    52px;
+}
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* ── NAV ── */
+nav{
+  flex-shrink:0;
+  height:var(--nav-h);
+  background:var(--white);
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  padding:0 24px;
+  gap:0;
+  z-index:1000;
+}
+.nav-brand{
+  font-size:15px;
+  font-weight:700;
+  color:var(--text);
+  margin-right:40px;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+.nav-brand span{ color:var(--accent); }
+.nav-links{
+  display:flex;
+  align-items:center;
+  gap:2px;
+  flex:1;
+}
+.nav-link{
+  padding:6px 14px;
+  font-size:13px;
+  font-weight:500;
+  color:var(--muted);
+  border-radius:6px;
+  cursor:pointer;
+  transition:all .15s;
+  border:none;
+  background:none;
+  font-family:'Inter',sans-serif;
+  text-decoration:none;
+}
+.nav-link:hover{color:var(--text);background:var(--bg);}
+.nav-link.active{color:var(--text);background:var(--bg); font-weight:600;}
+.nav-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.btn-login{
+  padding:7px 16px;font-size:13px;font-weight:500;
+  border:1px solid var(--border);border-radius:7px;
+  background:transparent;color:var(--text);cursor:pointer;
+  font-family:'Inter',sans-serif;transition:all .15s;
+}
+.btn-login:hover{background:var(--bg);}
+.btn-signup{
+  padding:7px 16px;font-size:13px;font-weight:600;
+  border:none;border-radius:7px;
+  background:var(--accent);color:#fff;cursor:pointer;
+  font-family:'Inter',sans-serif;transition:background .15s;
+}
+.btn-signup:hover{background:var(--accent2);}
+
+/* ── BODY ── */
+.body{flex:1;display:flex;overflow:hidden;}
+
+/* ── LEFT PANEL ── */
+.panel{
+  width:var(--panel-w);
+  flex-shrink:0;
+  background:var(--white);
+  border-right:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* panel top bar */
+.panel-topbar{
+  padding:14px 16px 12px;
+  border-bottom:1px solid var(--border2);
+  flex-shrink:0;
+}
+.panel-title{
+  font-size:13px;font-weight:700;color:var(--text);
+  display:flex;align-items:center;gap:7px;margin-bottom:10px;
+}
+.live-dot{
+  width:7px;height:7px;border-radius:50%;background:var(--accent);
+  animation:pulse 2s ease-in-out infinite;flex-shrink:0;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}
+
+/* search */
+.search-wrap{position:relative;}
+.search-input{
+  width:100%;
+  padding:8px 10px 8px 32px;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:7px;
+  color:var(--text);
+  font-size:12px;
+  font-family:'Inter',sans-serif;
+  outline:none;
+  transition:border-color .15s;
+}
+.search-input:focus{border-color:var(--accent);background:var(--white);}
+.search-input::placeholder{color:var(--muted2);}
+.search-icon{
+  position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  color:var(--muted2);font-size:13px;pointer-events:none;
+}
+
+/* filter chips */
+.filter-section{
+  padding:10px 16px;
+  border-bottom:1px solid var(--border2);
+  flex-shrink:0;
+}
+.filter-label{
+  font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--muted2);margin-bottom:7px;
+}
+.chips{display:flex;gap:5px;flex-wrap:wrap;}
+.chip{
+  padding:4px 10px;
+  border-radius:20px;
+  border:1px solid var(--border);
+  background:transparent;
+  color:var(--muted);
+  font-size:11px;font-weight:500;
+  cursor:pointer;
+  font-family:'Inter',sans-serif;
+  transition:all .15s;
+}
+.chip.active{
+  border-color:var(--accent);
+  color:var(--accent);
+  background:var(--accent-bg);
+}
+.chip:hover:not(.active){border-color:#bbb;color:var(--text);}
+
+/* legend */
+.legend-section{
+  padding:10px 16px;
+  border-bottom:1px solid var(--border2);
+  flex-shrink:0;
+}
+.legend-label{
+  font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--muted2);margin-bottom:7px;
+}
+.legend-bar{
+  height:7px;border-radius:4px;
+  background:linear-gradient(to right,#2ecc71,#f1c40f,#e67e22,#e74c3c,#8e44ad);
+  margin-bottom:5px;
+}
+.legend-ticks{
+  display:flex;justify-content:space-between;
+  font-size:10px;color:var(--muted2);font-weight:500;
+}
+
+/* locality list */
+.loc-list{flex:1;overflow-y:auto;}
+.loc-list::-webkit-scrollbar{width:4px;}
+.loc-list::-webkit-scrollbar-track{background:transparent;}
+.loc-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.loc-group-header{
+  padding:8px 16px 4px;
+  font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1px;
+  color:var(--muted2);
+  background:var(--surface);
+  border-bottom:1px solid var(--border2);
+  position:sticky;top:0;
+}
+.loc-item{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 16px;
+  cursor:pointer;
+  border-bottom:1px solid var(--border2);
+  border-left:3px solid transparent;
+  transition:all .12s;
+  background:var(--white);
+}
+.loc-item:hover{background:var(--surface);border-left-color:var(--border);}
+.loc-item.sel{background:var(--accent-bg);border-left-color:var(--accent);}
+.loc-rank{font-size:10px;color:var(--muted2);width:18px;text-align:right;flex-shrink:0;font-weight:600;}
+.loc-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;border:1.5px solid rgba(0,0,0,.12);}
+.loc-info{flex:1;overflow:hidden;}
+.loc-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);}
+.loc-dist{font-size:10px;color:var(--muted2);margin-top:1px;}
+.loc-hvi{font-size:11px;font-weight:700;flex-shrink:0;}
+
+/* panel footer */
+.panel-footer{
+  flex-shrink:0;
+  padding:9px 16px;
+  border-top:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:10px;color:var(--muted2);
+  background:var(--surface);
+}
+#srv-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#22c55e;margin-right:5px;vertical-align:middle;}
+.refresh-small{
+  padding:4px 10px;font-size:10px;font-weight:600;
+  border:1px solid var(--accent-border);border-radius:5px;
+  background:var(--accent-bg);color:var(--accent);
+  cursor:pointer;font-family:'Inter',sans-serif;transition:all .15s;
+}
+.refresh-small:hover{background:#fbe6de;}
+
+/* ── MAP ── */
+.map-wrap{flex:1;position:relative;}
+#map{position:absolute;inset:0;}
+
+/* map top controls */
+.map-controls{
+  position:absolute;top:12px;left:12px;z-index:500;
+  display:flex;gap:6px;
+}
+.map-ctrl-btn{
+  padding:6px 14px;
+  font-size:11px;font-weight:600;
+  border:1px solid var(--border);
+  border-radius:7px;
+  background:var(--white);
+  color:var(--muted);
+  cursor:pointer;
+  font-family:'Inter',sans-serif;
+  transition:all .15s;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+.map-ctrl-btn:hover{color:var(--text);}
+.map-ctrl-btn.active{
+  background:var(--white);
+  color:var(--accent);
+  border-color:var(--accent-border);
+}
+
+/* info pill top-center */
+.map-info-pill{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  z-index:500;
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:6px 16px;
+  font-size:12px;font-weight:500;
+  color:var(--muted);
+  display:flex;align-items:center;gap:7px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+  white-space:nowrap;
+}
+.pill-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s ease-in-out infinite;}
+
+/* stats strip bottom of map */
+.map-stats{
+  position:absolute;bottom:12px;left:12px;right:12px;
+  z-index:500;
+  display:flex;gap:8px;
+  pointer-events:none;
+}
+.map-stat-card{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:9px 14px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+  flex:1;
+}
+.map-stat-val{font-size:18px;font-weight:800;color:var(--accent);line-height:1;}
+.map-stat-lbl{font-size:10px;color:var(--muted2);margin-top:2px;font-weight:500;}
+
+/* roof legend card */
+.roof-legend-card{
+  background:var(--white);
+  border:1px solid var(--border);
+  border-radius:9px;
+  padding:9px 14px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  flex:2.5;
+}
+.roof-lbl-head{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted2);margin-right:4px;}
+.roof-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--muted);font-weight:500;}
+.roof-pip{width:8px;height:8px;border-radius:50%;flex-shrink:0;border:1px solid rgba(0,0,0,.1);}
+
+/* popup */
+.leaflet-popup-content-wrapper{
+  background:var(--white)!important;
+  border:1px solid var(--border)!important;
+  border-radius:10px!important;
+  box-shadow:0 4px 20px rgba(0,0,0,.12)!important;
+  padding:0!important;
+}
+.leaflet-popup-content{margin:0!important;width:230px!important;}
+.leaflet-popup-tip{background:var(--white)!important;}
+.pu-head{padding:12px 14px 10px;border-bottom:1px solid var(--border2);}
+.pu-name{font-size:13px;font-weight:700;color:var(--text);}
+.pu-dist{font-size:10px;color:var(--muted2);margin-top:2px;}
+.pu-hvi-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.pu-bar-bg{flex:1;height:5px;background:var(--bg);border-radius:3px;overflow:hidden;}
+.pu-bar-fill{height:100%;border-radius:3px;}
+.pu-hvi-num{font-size:12px;font-weight:700;flex-shrink:0;}
+.pu-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border2);}
+.pu-cell{background:var(--white);padding:8px 12px;}
+.pu-cell-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted2);font-weight:600;}
+.pu-cell-val{font-size:13px;font-weight:600;margin-top:2px;color:var(--text);}
+.pu-roof{padding:8px 12px;background:var(--surface);border-top:1px solid var(--border2);border-bottom-left-radius:10px;border-bottom-right-radius:10px;}
+.pu-roof-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted2);font-weight:600;}
+.pu-roof-val{font-size:11px;font-weight:500;margin-top:3px;color:var(--text);display:flex;align-items:center;gap:6px;}
+
+/* leaflet overrides */
+.leaflet-control-zoom{border:none!important;box-shadow:0 1px 4px rgba(0,0,0,.12)!important;}
+.leaflet-control-zoom a{
+  background:var(--white)!important;color:var(--text)!important;
+  border:1px solid var(--border)!important;font-size:15px!important;
+}
+.leaflet-control-zoom a:hover{background:var(--bg)!important;}
+.leaflet-control-attribution{background:rgba(255,255,255,.8)!important;color:var(--muted2)!important;font-size:9px!important;}
+.leaflet-control-attribution a{color:var(--muted)!important;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">Delhi's <span>HeatShield</span></div>
+  <div class="nav-links">
+    <a class="nav-link active">Risk Map</a>
+    <a class="nav-link">HVI Factors</a>
+    <a class="nav-link">Search Location</a>
+    <a class="nav-link">HVI Rating</a>
+    <a class="nav-link">Alerts</a>
+  </div>
+  <div class="nav-right">
+    <button class="btn-login">Log in</button>
+    <button class="btn-signup">Sign up</button>
+  </div>
+</nav>
+
+<!-- BODY -->
+<div class="body">
+
+  <!-- LEFT PANEL -->
+  <div class="panel">
+
+    <div class="panel-topbar">
+      <div class="panel-title">
+        <span class="live-dot"></span>
+        Risk Map — 132 Localities
+      </div>
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input class="search-input" id="search" placeholder="Search locality or district…" oninput="applyFilters()">
+      </div>
+    </div>
+
+    <div class="filter-section">
+      <div class="filter-label">Settlement Type</div>
+      <div class="chips">
+        <button class="chip active" data-t="all"         onclick="setType(this)">All</button>
+        <button class="chip"        data-t="informal"    onclick="setType(this)">Informal</button>
+        <button class="chip"        data-t="dense_urban" onclick="setType(this)">Dense Urban</button>
+        <button class="chip"        data-t="planned"     onclick="setType(this)">Planned</button>
+        <button class="chip"        data-t="affluent"    onclick="setType(this)">Affluent</button>
+        <button class="chip"        data-t="industrial"  onclick="setType(this)">Industrial</button>
+      </div>
+    </div>
+
+    <div class="legend-section">
+      <div class="legend-label">HVI Scale</div>
+      <div class="legend-bar"></div>
+      <div class="legend-ticks"><span>Low</span><span>Moderate</span><span>Critical</span></div>
+    </div>
+
+    <div class="loc-list" id="loc-list"></div>
+
+    <div class="panel-footer">
+      <span><span id="srv-dot"></span><span id="showing">132 localities</span></span>
+      <button class="refresh-small" onclick="refreshData()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="map-wrap">
+    <div id="map"></div>
+
+    <!-- info pill -->
+    <div class="map-info-pill">
+      <span class="pill-dot"></span>
+      Live Heat Monitoring — Delhi NCR
+    </div>
+
+    <!-- layer toggle top-left -->
+    <div class="map-controls">
+      <button class="map-ctrl-btn" id="btn-street"    onclick="setLayer('street')">Street</button>
+      <button class="map-ctrl-btn active" id="btn-satellite" onclick="setLayer('satellite')">Satellite</button>
+      <button class="map-ctrl-btn" id="btn-hybrid"   onclick="setLayer('hybrid')">Hybrid</button>
+    </div>
+
+    <!-- stats strip -->
+    <div class="map-stats">
+      <div class="map-stat-card">
+        <div class="map-stat-val" id="s-count">132</div>
+        <div class="map-stat-lbl">Localities Monitored</div>
+      </div>
+      <div class="map-stat-card">
+        <div class="map-stat-val" id="s-lst">—</div>
+        <div class="map-stat-lbl">Max LST °C</div>
+      </div>
+      <div class="map-stat-card">
+        <div class="map-stat-val" id="s-hvi">—</div>
+        <div class="map-stat-lbl">Avg HVI Score</div>
+      </div>
+      <div class="roof-legend-card">
+        <span class="roof-lbl-head">Roof</span>
+        <div class="roof-item"><div class="roof-pip" style="background:#e74c3c"></div>Metal</div>
+        <div class="roof-item"><div class="roof-pip" style="background:#e67e22"></div>Asbestos</div>
+        <div class="roof-item"><div class="roof-pip" style="background:#9b59b6"></div>Tarpaulin</div>
+        <div class="roof-item"><div class="roof-pip" style="background:#3498db"></div>RCC</div>
+        <div class="roof-item"><div class="roof-pip" style="background:#27ae60"></div>Clay</div>
+        <div class="roof-item"><div class="roof-pip" style="background:#1abc9c"></div>Green</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Tile layers ───────────────────────────────────────────────────────────────
+const TILES = {
+  satellite: L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {attribution:'Esri, Maxar, Earthstar Geographics',maxZoom:19}
+  ),
+  street: L.tileLayer(
+    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+    {attribution:'&copy; OSM &copy; CARTO',subdomains:'abcd',maxZoom:19}
+  ),
+  hybrid: L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    {attribution:'Esri',maxZoom:19}
+  ),
+};
+const ROAD_OVERLAY = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png',
+  {subdomains:'abcd',maxZoom:19,opacity:.85}
+);
+
+const map = L.map('map',{center:[28.64,77.19],zoom:11});
+TILES.satellite.addTo(map);
+let labelLayer=null;
+
+function setLayer(type){
+  document.querySelectorAll('.map-ctrl-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btn-'+type).classList.add('active');
+  Object.values(TILES).forEach(t=>{if(map.hasLayer(t))map.removeLayer(t);});
+  if(labelLayer&&map.hasLayer(labelLayer))map.removeLayer(labelLayer);
+  TILES[type].addTo(map);
+  if(type==='hybrid'){labelLayer=ROAD_OVERLAY;map.addLayer(labelLayer);}
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let DATA=[],activeType='all',selName=null,markers={};
+
+// ── Colors ────────────────────────────────────────────────────────────────────
+function hviColor(v){
+  const stops=[[0.09,[46,204,113]],[0.35,[241,196,15]],[0.55,[230,126,34]],[0.72,[231,76,60]],[0.89,[142,68,173]]];
+  for(let i=0;i<stops.length-1;i++){
+    const [v0,c0]=stops[i],[v1,c1]=stops[i+1];
+    if(v<=v1){const t=(v-v0)/(v1-v0);return `rgb(${~~(c0[0]+t*(c1[0]-c0[0]))},${~~(c0[1]+t*(c1[1]-c0[1]))},${~~(c0[2]+t*(c1[2]-c0[2]))})`;}
+  }
+  return 'rgb(142,68,173)';
+}
+function roofColor(m){
+  return {'Metal Sheet':'#e74c3c','Asbestos Sheet':'#e67e22','Tarpaulin/Plastic':'#9b59b6',
+          'RCC Concrete':'#3498db','Clay Tiles':'#27ae60','Green Roof':'#1abc9c',
+          'Glass/Polycarbonate':'#95a5a6'}[m]||'#7f8c8d';
+}
+
+// ── Data load ─────────────────────────────────────────────────────────────────
+async function loadData(){
+  const dot=document.getElementById('srv-dot');
+  dot.style.background='#f97316';
+  try{
+    const r=await fetch('http://localhost:5050/data',{cache:'no-store'});
+    if(!r.ok)throw new Error(r.status);
+    DATA=await r.json();
+    dot.style.background='#22c55e';
+  }catch(e){
+    DATA=EMBEDDED;
+    dot.style.background='#f97316';
+  }
+  renderAll();
+}
+
+function refreshData(){
+  Object.values(markers).forEach(m=>map.removeLayer(m));
+  markers={};
+  loadData();
+}
+
+// ── Markers ───────────────────────────────────────────────────────────────────
+function renderAll(){
+  Object.values(markers).forEach(m=>map.removeLayer(m));
+  markers={};
+  DATA.forEach(d=>{
+    const hvi=+d.HVI,col=hviColor(hvi),rc=roofColor(d.dominant_roof_material);
+    const pct=((hvi-.09)/(.89-.09)*100).toFixed(0);
+    const m=L.circleMarker([+d.latitude,+d.longitude],{
+      radius:5+hvi*11,fillColor:col,color:rc,
+      weight:1.5,opacity:.9,fillOpacity:.75,
+    });
+    m.bindPopup(`
+      <div class="pu-head">
+        <div class="pu-name">${d.locality}</div>
+        <div class="pu-dist">${d.district}</div>
+        <div class="pu-hvi-row">
+          <div class="pu-bar-bg"><div class="pu-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+          <div class="pu-hvi-num" style="color:${col}">HVI ${hvi.toFixed(3)}</div>
+        </div>
+      </div>
+      <div class="pu-grid">
+        <div class="pu-cell"><div class="pu-cell-lbl">LST</div><div class="pu-cell-val">${d.lst_celsius}°C</div></div>
+        <div class="pu-cell"><div class="pu-cell-lbl">Air Temp</div><div class="pu-cell-val">${d.air_temp_celsius}°C</div></div>
+        <div class="pu-cell"><div class="pu-cell-lbl">UHI</div><div class="pu-cell-val">+${d.urban_heat_intensity}°C</div></div>
+        <div class="pu-cell"><div class="pu-cell-lbl">Green Cover</div><div class="pu-cell-val">${d.green_cover_pct}%</div></div>
+        <div class="pu-cell"><div class="pu-cell-lbl">Pop Density</div><div class="pu-cell-val">${(+d.population_density_per_km2).toLocaleString()}/km²</div></div>
+        <div class="pu-cell"><div class="pu-cell-lbl">Type</div><div class="pu-cell-val" style="font-size:10px;text-transform:capitalize">${d.locality_type}</div></div>
+      </div>
+      <div class="pu-roof">
+        <div class="pu-roof-lbl">Dominant Roof Material</div>
+        <div class="pu-roof-val"><span style="width:8px;height:8px;border-radius:50%;background:${rc};display:inline-block;flex-shrink:0"></span>${d.dominant_roof_material}</div>
+      </div>
+    `,{maxWidth:230,className:''});
+    m.on('click',()=>selectLoc(d.locality));
+    markers[d.locality]=m;
+    m.addTo(map);
+  });
+  document.getElementById('s-count').textContent=DATA.length;
+  document.getElementById('s-lst').textContent=Math.max(...DATA.map(d=>+d.lst_celsius)).toFixed(1);
+  document.getElementById('s-hvi').textContent=(DATA.reduce((s,d)=>s+(+d.HVI),0)/DATA.length).toFixed(3);
+  applyFilters();
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function applyFilters(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const vis=DATA.filter(d=>{
+    return (activeType==='all'||d.locality_type===activeType)&&
+           (!q||d.locality.toLowerCase().includes(q)||d.district.toLowerCase().includes(q));
+  });
+  const vset=new Set(vis.map(d=>d.locality));
+  DATA.forEach(d=>{
+    const m=markers[d.locality];if(!m)return;
+    m.setStyle(vset.has(d.locality)?{opacity:.9,fillOpacity:.75}:{opacity:.05,fillOpacity:.04});
+  });
+  buildList(vis);
+  document.getElementById('s-count').textContent=vis.length;
+}
+
+function setType(btn){
+  document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');activeType=btn.dataset.t;applyFilters();
+}
+
+// ── Sidebar list ──────────────────────────────────────────────────────────────
+function buildList(data){
+  const sorted=[...data].sort((a,b)=>(+b.HVI)-(+a.HVI));
+  const el=document.getElementById('loc-list');
+  el.innerHTML='';
+  if(!sorted.length){
+    el.innerHTML='<div style="padding:24px 16px;text-align:center;color:#9b948c;font-size:12px;">No localities match</div>';
+    return;
+  }
+  sorted.forEach((d,i)=>{
+    const col=hviColor(+d.HVI);
+    const row=document.createElement('div');
+    row.className='loc-item'+(d.locality===selName?' sel':'');
+    row.dataset.n=d.locality;
+    row.innerHTML=`
+      <span class="loc-rank">${i+1}</span>
+      <div class="loc-dot" style="background:${col}"></div>
+      <div class="loc-info">
+        <div class="loc-name">${d.locality}</div>
+        <div class="loc-dist">${d.district}</div>
+      </div>
+      <div class="loc-hvi" style="color:${col}">${(+d.HVI).toFixed(3)}</div>
+    `;
+    row.onclick=()=>{
+      selectLoc(d.locality);
+      map.flyTo([+d.latitude,+d.longitude],14,{duration:.7,easeLinearity:.3});
+      setTimeout(()=>markers[d.locality]?.openPopup(),750);
+    };
+    el.appendChild(row);
+  });
+  document.getElementById('showing').textContent=`${sorted.length} localities`;
+}
+
+function selectLoc(name){
+  selName=name;
+  document.querySelectorAll('.loc-item').forEach(r=>r.classList.toggle('sel',r.dataset.n===name));
+  document.querySelector(`.loc-item[data-n="${name}"]`)?.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+// ── Embedded fallback ─────────────────────────────────────────────────────────
+const EMBEDDED=[{"date": "2026-03-20", "locality": "Bijwasan", "district": "South West Delhi", "latitude": "28.521", "longitude": "77.042", "lst_celsius": "55.2", "air_temp_celsius": "33.0", "urban_heat_intensity": "22.2", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "3.2", "population_density_per_km2": "19665", "locality_type": "industrial", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.9579, "norm_pop": 0.0983, "norm_green": 0.92, "HVI": 0.7639}, {"date": "2026-03-20", "locality": "Alipur", "district": "North West Delhi", "latitude": "28.81", "longitude": "77.135", "lst_celsius": "54.9", "air_temp_celsius": "32.8", "urban_heat_intensity": "22.1", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "5.2", "population_density_per_km2": "9165", "locality_type": "industrial", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.9421, "norm_pop": 0.0458, "norm_green": 0.87, "HVI": 0.7254}, {"date": "2026-03-20", "locality": "Bawana", "district": "North West Delhi", "latitude": "28.793", "longitude": "77.04", "lst_celsius": "53.8", "air_temp_celsius": "33.0", "urban_heat_intensity": "20.8", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "2.7", "population_density_per_km2": "23542", "locality_type": "industrial", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.8842, "norm_pop": 0.1177, "norm_green": 0.9325, "HVI": 0.7445}, {"date": "2026-03-20", "locality": "Brahmpuri", "district": "Shahdara", "latitude": "28.69", "longitude": "77.282", "lst_celsius": "53.4", "air_temp_celsius": "30.3", "urban_heat_intensity": "23.1", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "3.1", "population_density_per_km2": "168933", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.8632, "norm_pop": 0.8447, "norm_green": 0.9225, "HVI": 0.893}, {"date": "2026-03-20", "locality": "Najafgarh", "district": "South West Delhi", "latitude": "28.609", "longitude": "76.98", "lst_celsius": "53.3", "air_temp_celsius": "32.1", "urban_heat_intensity": "21.2", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "4.2", "population_density_per_km2": "15938", "locality_type": "industrial", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.8579, "norm_pop": 0.0797, "norm_green": 0.895, "HVI": 0.7202}, {"date": "2026-03-20", "locality": "Gokulpuri", "district": "Shahdara", "latitude": "28.7", "longitude": "77.3", "lst_celsius": "53.2", "air_temp_celsius": "29.7", "urban_heat_intensity": "23.5", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "4.8", "population_density_per_km2": "179657", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.8526, "norm_pop": 0.8983, "norm_green": 0.88, "HVI": 0.8666}, {"date": "2026-03-20", "locality": "Kanjhawala", "district": "North West Delhi", "latitude": "28.783", "longitude": "77.02", "lst_celsius": "52.7", "air_temp_celsius": "30.7", "urban_heat_intensity": "22.0", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "1.5", "population_density_per_km2": "12680", "locality_type": "industrial", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.8263, "norm_pop": 0.0634, "norm_green": 0.9625, "HVI": 0.7069}, {"date": "2026-03-20", "locality": "Madanpur Khadar", "district": "South East Delhi", "latitude": "28.517", "longitude": "77.301", "lst_celsius": "52.7", "air_temp_celsius": "29.9", "urban_heat_intensity": "22.8", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "5.4", "population_density_per_km2": "164222", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.8263, "norm_pop": 0.8211, "norm_green": 0.865, "HVI": 0.8389}, {"date": "2026-03-20", "locality": "Jahangirpuri", "district": "North Delhi", "latitude": "28.736", "longitude": "77.168", "lst_celsius": "52.6", "air_temp_celsius": "30.8", "urban_heat_intensity": "21.8", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "3.3", "population_density_per_km2": "167906", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.8211, "norm_pop": 0.8395, "norm_green": 0.9175, "HVI": 0.8638}, {"date": "2026-03-20", "locality": "Sangam Vihar", "district": "South Delhi", "latitude": "28.507", "longitude": "77.227", "lst_celsius": "52.6", "air_temp_celsius": "30.8", "urban_heat_intensity": "21.8", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "3.1", "population_density_per_km2": "158317", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.8211, "norm_pop": 0.7916, "norm_green": 0.9225, "HVI": 0.8552}, {"date": "2026-03-20", "locality": "Narela", "district": "North West Delhi", "latitude": "28.854", "longitude": "77.093", "lst_celsius": "52.5", "air_temp_celsius": "32.1", "urban_heat_intensity": "20.4", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "4.7", "population_density_per_km2": "19285", "locality_type": "industrial", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.8158, "norm_pop": 0.0964, "norm_green": 0.8825, "HVI": 0.6938}, {"date": "2026-03-20", "locality": "Pochanpur", "district": "South West Delhi", "latitude": "28.54", "longitude": "77.035", "lst_celsius": "52.5", "air_temp_celsius": "31.1", "urban_heat_intensity": "21.4", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "4.4", "population_density_per_km2": "16827", "locality_type": "industrial", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.8158, "norm_pop": 0.0841, "norm_green": 0.89, "HVI": 0.7054}, {"date": "2026-03-20", "locality": "Okhla", "district": "South East Delhi", "latitude": "28.5355", "longitude": "77.273", "lst_celsius": "52.5", "air_temp_celsius": "31.3", "urban_heat_intensity": "21.2", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "2.3", "population_density_per_km2": "7565", "locality_type": "industrial", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.8158, "norm_pop": 0.0378, "norm_green": 0.9425, "HVI": 0.6941}, {"date": "2026-03-20", "locality": "Indira Gandhi Airport", "district": "South West Delhi", "latitude": "28.5562", "longitude": "77.1", "lst_celsius": "52.4", "air_temp_celsius": "33.3", "urban_heat_intensity": "19.1", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "2.1", "population_density_per_km2": "17854", "locality_type": "industrial", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.8105, "norm_pop": 0.0893, "norm_green": 0.9475, "HVI": 0.7035}, {"date": "2026-03-20", "locality": "Kapashera", "district": "South West Delhi", "latitude": "28.517", "longitude": "77.07", "lst_celsius": "52.4", "air_temp_celsius": "31.4", "urban_heat_intensity": "21.0", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "1.3", "population_density_per_km2": "22320", "locality_type": "industrial", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.8105, "norm_pop": 0.1116, "norm_green": 0.9675, "HVI": 0.7245}, {"date": "2026-03-20", "locality": "Karawal Nagar", "district": "North East Delhi", "latitude": "28.745", "longitude": "77.305", "lst_celsius": "52.2", "air_temp_celsius": "30.7", "urban_heat_intensity": "21.5", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "4.9", "population_density_per_km2": "169153", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.8, "norm_pop": 0.8458, "norm_green": 0.8775, "HVI": 0.8372}, {"date": "2026-03-20", "locality": "Tughlakabad", "district": "South Delhi", "latitude": "28.497", "longitude": "77.262", "lst_celsius": "52.2", "air_temp_celsius": "30.2", "urban_heat_intensity": "22.0", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "5.5", "population_density_per_km2": "148201", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.8, "norm_pop": 0.741, "norm_green": 0.8625, "HVI": 0.8382}, {"date": "2026-03-20", "locality": "Deoli", "district": "South Delhi", "latitude": "28.5", "longitude": "77.213", "lst_celsius": "52.1", "air_temp_celsius": "30.8", "urban_heat_intensity": "21.3", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "7.1", "population_density_per_km2": "99651", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.7947, "norm_pop": 0.4983, "norm_green": 0.8225, "HVI": 0.7548}, {"date": "2026-03-20", "locality": "Badarpur", "district": "South Delhi", "latitude": "28.503", "longitude": "77.295", "lst_celsius": "52.1", "air_temp_celsius": "29.9", "urban_heat_intensity": "22.2", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "5.4", "population_density_per_km2": "195483", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.7947, "norm_pop": 0.9774, "norm_green": 0.865, "HVI": 0.8716}, {"date": "2026-03-20", "locality": "Shaheen Bagh", "district": "South East Delhi", "latitude": "28.5555", "longitude": "77.298", "lst_celsius": "52.1", "air_temp_celsius": "33.1", "urban_heat_intensity": "19.0", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "6.3", "population_density_per_km2": "161385", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.7947, "norm_pop": 0.8069, "norm_green": 0.8425, "HVI": 0.8205}, {"date": "2026-03-20", "locality": "Abul Fazal Enclave", "district": "South East Delhi", "latitude": "28.546", "longitude": "77.295", "lst_celsius": "52.1", "air_temp_celsius": "30.6", "urban_heat_intensity": "21.5", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "7.8", "population_density_per_km2": "102698", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.7947, "norm_pop": 0.5135, "norm_green": 0.805, "HVI": 0.7794}, {"date": "2026-03-20", "locality": "Dashrathpuri", "district": "South West Delhi", "latitude": "28.6", "longitude": "77.068", "lst_celsius": "52.0", "air_temp_celsius": "32.0", "urban_heat_intensity": "20.0", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "3.4", "population_density_per_km2": "198276", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.7895, "norm_pop": 0.9914, "norm_green": 0.915, "HVI": 0.8701}, {"date": "2026-03-20", "locality": "Bindapur", "district": "South West Delhi", "latitude": "28.61", "longitude": "77.046", "lst_celsius": "52.0", "air_temp_celsius": "29.1", "urban_heat_intensity": "22.9", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "3.4", "population_density_per_km2": "169189", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.7895, "norm_pop": 0.8459, "norm_green": 0.915, "HVI": 0.866}, {"date": "2026-03-20", "locality": "Ambedkar Nagar", "district": "South Delhi", "latitude": "28.515", "longitude": "77.235", "lst_celsius": "51.8", "air_temp_celsius": "30.9", "urban_heat_intensity": "20.9", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "5.2", "population_density_per_km2": "91658", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.7789, "norm_pop": 0.4583, "norm_green": 0.87, "HVI": 0.7633}, {"date": "2026-03-20", "locality": "Seelampur", "district": "Shahdara", "latitude": "28.678", "longitude": "77.272", "lst_celsius": "51.6", "air_temp_celsius": "31.2", "urban_heat_intensity": "20.4", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "3.5", "population_density_per_km2": "184743", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.7684, "norm_pop": 0.9237, "norm_green": 0.9125, "HVI": 0.8737}, {"date": "2026-03-20", "locality": "Bhajanpura", "district": "North East Delhi", "latitude": "28.71", "longitude": "77.265", "lst_celsius": "51.5", "air_temp_celsius": "29.4", "urban_heat_intensity": "22.1", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "9.6", "population_density_per_km2": "119221", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.7632, "norm_pop": 0.5961, "norm_green": 0.76, "HVI": 0.6883}, {"date": "2026-03-20", "locality": "Tekhand", "district": "South East Delhi", "latitude": "28.51", "longitude": "77.31", "lst_celsius": "51.4", "air_temp_celsius": "30.6", "urban_heat_intensity": "20.8", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "5.2", "population_density_per_km2": "190358", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.7579, "norm_pop": 0.9518, "norm_green": 0.87, "HVI": 0.8421}, {"date": "2026-03-20", "locality": "Shastri Park", "district": "Shahdara", "latitude": "28.671", "longitude": "77.262", "lst_celsius": "51.2", "air_temp_celsius": "28.9", "urban_heat_intensity": "22.3", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "4.7", "population_density_per_km2": "89913", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.7474, "norm_pop": 0.4496, "norm_green": 0.8825, "HVI": 0.753}, {"date": "2026-03-20", "locality": "Mustafabad", "district": "North East Delhi", "latitude": "28.714", "longitude": "77.3", "lst_celsius": "51.0", "air_temp_celsius": "32.8", "urban_heat_intensity": "18.2", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "4.4", "population_density_per_km2": "169167", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.7368, "norm_pop": 0.8458, "norm_green": 0.89, "HVI": 0.7551}, {"date": "2026-03-20", "locality": "Mangolpuri", "district": "North West Delhi", "latitude": "28.713", "longitude": "77.094", "lst_celsius": "51.0", "air_temp_celsius": "31.6", "urban_heat_intensity": "19.4", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "3.8", "population_density_per_km2": "112790", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.7368, "norm_pop": 0.5639, "norm_green": 0.905, "HVI": 0.7892}, {"date": "2026-03-20", "locality": "Shadipur", "district": "Central Delhi", "latitude": "28.654", "longitude": "77.162", "lst_celsius": "50.8", "air_temp_celsius": "30.6", "urban_heat_intensity": "20.2", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "8.4", "population_density_per_km2": "95673", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.7263, "norm_pop": 0.4784, "norm_green": 0.79, "HVI": 0.6579}, {"date": "2026-03-20", "locality": "Munirka", "district": "South Delhi", "latitude": "28.556", "longitude": "77.176", "lst_celsius": "50.8", "air_temp_celsius": "29.4", "urban_heat_intensity": "21.4", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "9.5", "population_density_per_km2": "100256", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.7263, "norm_pop": 0.5013, "norm_green": 0.7625, "HVI": 0.657}, {"date": "2026-03-20", "locality": "Nand Nagri", "district": "Shahdara", "latitude": "28.705", "longitude": "77.315", "lst_celsius": "50.7", "air_temp_celsius": "31.6", "urban_heat_intensity": "19.1", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "6.1", "population_density_per_km2": "189704", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.7211, "norm_pop": 0.9485, "norm_green": 0.8475, "HVI": 0.8491}, {"date": "2026-03-20", "locality": "Moti Nagar", "district": "West Delhi", "latitude": "28.663", "longitude": "77.14", "lst_celsius": "50.6", "air_temp_celsius": "30.9", "urban_heat_intensity": "19.7", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "10.6", "population_density_per_km2": "88858", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.7158, "norm_pop": 0.4443, "norm_green": 0.735, "HVI": 0.6364}, {"date": "2026-03-20", "locality": "Paharganj", "district": "Central Delhi", "latitude": "28.644", "longitude": "77.2135", "lst_celsius": "50.5", "air_temp_celsius": "30.2", "urban_heat_intensity": "20.3", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "4.7", "population_density_per_km2": "126661", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.7105, "norm_pop": 0.6333, "norm_green": 0.8825, "HVI": 0.7643}, {"date": "2026-03-20", "locality": "Dabri", "district": "South West Delhi", "latitude": "28.61", "longitude": "77.075", "lst_celsius": "50.5", "air_temp_celsius": "32.5", "urban_heat_intensity": "18.0", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "5.4", "population_density_per_km2": "186780", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.7105, "norm_pop": 0.9339, "norm_green": 0.865, "HVI": 0.846}, {"date": "2026-03-20", "locality": "Shahdara", "district": "Shahdara", "latitude": "28.6694", "longitude": "77.2887", "lst_celsius": "50.3", "air_temp_celsius": "30.7", "urban_heat_intensity": "19.6", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "9.6", "population_density_per_km2": "116994", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.7, "norm_pop": 0.585, "norm_green": 0.76, "HVI": 0.664}, {"date": "2026-03-20", "locality": "Maujpur", "district": "North East Delhi", "latitude": "28.7", "longitude": "77.285", "lst_celsius": "50.2", "air_temp_celsius": "30.3", "urban_heat_intensity": "19.9", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "10.2", "population_density_per_km2": "111679", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.6947, "norm_pop": 0.5584, "norm_green": 0.745, "HVI": 0.7288}, {"date": "2026-03-20", "locality": "Chandni Chowk", "district": "Central Delhi", "latitude": "28.6506", "longitude": "77.2303", "lst_celsius": "50.1", "air_temp_celsius": "31.3", "urban_heat_intensity": "18.8", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "9.2", "population_density_per_km2": "103786", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.6895, "norm_pop": 0.5189, "norm_green": 0.77, "HVI": 0.7116}, {"date": "2026-03-20", "locality": "Sultanpuri", "district": "North West Delhi", "latitude": "28.723", "longitude": "77.072", "lst_celsius": "50.0", "air_temp_celsius": "31.4", "urban_heat_intensity": "18.6", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "5.3", "population_density_per_km2": "129244", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.6842, "norm_pop": 0.6462, "norm_green": 0.8675, "HVI": 0.6922}, {"date": "2026-03-20", "locality": "Kalindi Kunj", "district": "South East Delhi", "latitude": "28.538", "longitude": "77.308", "lst_celsius": "50.0", "air_temp_celsius": "29.9", "urban_heat_intensity": "20.1", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "3.5", "population_density_per_km2": "178362", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.6842, "norm_pop": 0.8918, "norm_green": 0.9125, "HVI": 0.8378}, {"date": "2026-03-20", "locality": "Subhash Nagar", "district": "West Delhi", "latitude": "28.652", "longitude": "77.132", "lst_celsius": "49.9", "air_temp_celsius": "31.4", "urban_heat_intensity": "18.5", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "6.1", "population_density_per_km2": "60517", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.6789, "norm_pop": 0.3026, "norm_green": 0.8475, "HVI": 0.6176}, {"date": "2026-03-20", "locality": "Hari Nagar", "district": "West Delhi", "latitude": "28.633", "longitude": "77.114", "lst_celsius": "49.9", "air_temp_celsius": "30.5", "urban_heat_intensity": "19.4", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "11.8", "population_density_per_km2": "105401", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.6789, "norm_pop": 0.527, "norm_green": 0.705, "HVI": 0.634}, {"date": "2026-03-20", "locality": "Yamuna Vihar", "district": "North East Delhi", "latitude": "28.705", "longitude": "77.275", "lst_celsius": "49.7", "air_temp_celsius": "28.6", "urban_heat_intensity": "21.1", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "8.4", "population_density_per_km2": "110018", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.6684, "norm_pop": 0.5501, "norm_green": 0.79, "HVI": 0.652}, {"date": "2026-03-20", "locality": "Jaitpur", "district": "South East Delhi", "latitude": "28.5", "longitude": "77.302", "lst_celsius": "49.6", "air_temp_celsius": "30.4", "urban_heat_intensity": "19.2", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "2.4", "population_density_per_km2": "125727", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.6632, "norm_pop": 0.6286, "norm_green": 0.94, "HVI": 0.7833}, {"date": "2026-03-20", "locality": "Uttam Nagar", "district": "West Delhi", "latitude": "28.617", "longitude": "77.058", "lst_celsius": "49.5", "air_temp_celsius": "28.7", "urban_heat_intensity": "20.8", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "9.5", "population_density_per_km2": "123553", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.6579, "norm_pop": 0.6178, "norm_green": 0.7625, "HVI": 0.7188}, {"date": "2026-03-20", "locality": "Geeta Colony", "district": "East Delhi", "latitude": "28.659", "longitude": "77.268", "lst_celsius": "49.4", "air_temp_celsius": "30.8", "urban_heat_intensity": "18.6", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "11.4", "population_density_per_km2": "115928", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.6526, "norm_pop": 0.5796, "norm_green": 0.715, "HVI": 0.7123}, {"date": "2026-03-20", "locality": "Dwarka Mor", "district": "South West Delhi", "latitude": "28.604", "longitude": "77.058", "lst_celsius": "49.4", "air_temp_celsius": "29.0", "urban_heat_intensity": "20.4", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "6.1", "population_density_per_km2": "87276", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.6526, "norm_pop": 0.4364, "norm_green": 0.8475, "HVI": 0.6352}, {"date": "2026-03-20", "locality": "Shakarpur", "district": "East Delhi", "latitude": "28.635", "longitude": "77.287", "lst_celsius": "49.3", "air_temp_celsius": "30.0", "urban_heat_intensity": "19.3", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "9.3", "population_density_per_km2": "127431", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.6474, "norm_pop": 0.6372, "norm_green": 0.7675, "HVI": 0.745}, {"date": "2026-03-20", "locality": "Farsh Bazar", "district": "Shahdara", "latitude": "28.662", "longitude": "77.275", "lst_celsius": "49.3", "air_temp_celsius": "31.7", "urban_heat_intensity": "17.6", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "4.8", "population_density_per_km2": "73923", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.6474, "norm_pop": 0.3696, "norm_green": 0.88, "HVI": 0.6265}, {"date": "2026-03-20", "locality": "Jhandewalan", "district": "Central Delhi", "latitude": "28.6495", "longitude": "77.202", "lst_celsius": "48.7", "air_temp_celsius": "29.3", "urban_heat_intensity": "19.4", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "7.2", "population_density_per_km2": "127551", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.6158, "norm_pop": 0.6378, "norm_green": 0.82, "HVI": 0.7196}, {"date": "2026-03-20", "locality": "Kailash Colony", "district": "South Delhi", "latitude": "28.553", "longitude": "77.243", "lst_celsius": "48.7", "air_temp_celsius": "28.3", "urban_heat_intensity": "20.4", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "20.9", "population_density_per_km2": "61846", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.6158, "norm_pop": 0.3092, "norm_green": 0.4775, "HVI": 0.5979}, {"date": "2026-03-20", "locality": "Anand Parbat", "district": "Central Delhi", "latitude": "28.662", "longitude": "77.183", "lst_celsius": "48.3", "air_temp_celsius": "30.7", "urban_heat_intensity": "17.6", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "7.4", "population_density_per_km2": "87780", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.5947, "norm_pop": 0.4389, "norm_green": 0.815, "HVI": 0.6089}, {"date": "2026-03-20", "locality": "Jhilmil Colony", "district": "East Delhi", "latitude": "28.668", "longitude": "77.304", "lst_celsius": "48.2", "air_temp_celsius": "30.5", "urban_heat_intensity": "17.7", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "4.3", "population_density_per_km2": "107789", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.5895, "norm_pop": 0.5389, "norm_green": 0.8925, "HVI": 0.7301}, {"date": "2026-03-20", "locality": "Jagatpuri", "district": "North East Delhi", "latitude": "28.695", "longitude": "77.275", "lst_celsius": "48.2", "air_temp_celsius": "30.2", "urban_heat_intensity": "18.0", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "7.7", "population_density_per_km2": "88549", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.5895, "norm_pop": 0.4427, "norm_green": 0.8075, "HVI": 0.6064}, {"date": "2026-03-20", "locality": "Khajuri Khas", "district": "North East Delhi", "latitude": "28.723", "longitude": "77.285", "lst_celsius": "48.1", "air_temp_celsius": "30.9", "urban_heat_intensity": "17.2", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "4.8", "population_density_per_km2": "147009", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.5842, "norm_pop": 0.735, "norm_green": 0.88, "HVI": 0.74}, {"date": "2026-03-20", "locality": "Khanpur", "district": "South Delhi", "latitude": "28.51", "longitude": "77.201", "lst_celsius": "48.0", "air_temp_celsius": "30.1", "urban_heat_intensity": "17.9", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "6.2", "population_density_per_km2": "90564", "locality_type": "informal", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.5789, "norm_pop": 0.4528, "norm_green": 0.845, "HVI": 0.6997}, {"date": "2026-03-20", "locality": "Welcome Colony", "district": "Shahdara", "latitude": "28.6778", "longitude": "77.298", "lst_celsius": "47.9", "air_temp_celsius": "31.1", "urban_heat_intensity": "16.8", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "7.7", "population_density_per_km2": "78807", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.5737, "norm_pop": 0.394, "norm_green": 0.8075, "HVI": 0.6536}, {"date": "2026-03-20", "locality": "Gandhi Nagar", "district": "East Delhi", "latitude": "28.663", "longitude": "77.274", "lst_celsius": "47.8", "air_temp_celsius": "31.4", "urban_heat_intensity": "16.4", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "8.6", "population_density_per_km2": "80947", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.5684, "norm_pop": 0.4047, "norm_green": 0.785, "HVI": 0.6494}, {"date": "2026-03-20", "locality": "Ghonda", "district": "North East Delhi", "latitude": "28.72", "longitude": "77.26", "lst_celsius": "47.8", "air_temp_celsius": "30.0", "urban_heat_intensity": "17.8", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "8.4", "population_density_per_km2": "117497", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.5684, "norm_pop": 0.5875, "norm_green": 0.79, "HVI": 0.6244}, {"date": "2026-03-20", "locality": "Babarpur", "district": "North East Delhi", "latitude": "28.692", "longitude": "77.29", "lst_celsius": "47.8", "air_temp_celsius": "30.8", "urban_heat_intensity": "17.0", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "6.6", "population_density_per_km2": "108782", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.5684, "norm_pop": 0.5439, "norm_green": 0.835, "HVI": 0.6997}, {"date": "2026-03-20", "locality": "Janakpuri", "district": "West Delhi", "latitude": "28.628", "longitude": "77.083", "lst_celsius": "47.6", "air_temp_celsius": "27.7", "urban_heat_intensity": "19.9", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "12.7", "population_density_per_km2": "49844", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.5579, "norm_pop": 0.2492, "norm_green": 0.6825, "HVI": 0.4816}, {"date": "2026-03-20", "locality": "Patparganj", "district": "East Delhi", "latitude": "28.622", "longitude": "77.295", "lst_celsius": "47.5", "air_temp_celsius": "26.4", "urban_heat_intensity": "21.1", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "20.9", "population_density_per_km2": "26315", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.5526, "norm_pop": 0.1316, "norm_green": 0.4775, "HVI": 0.4652}, {"date": "2026-03-20", "locality": "Rajouri Garden", "district": "West Delhi", "latitude": "28.648", "longitude": "77.123", "lst_celsius": "47.5", "air_temp_celsius": "28.7", "urban_heat_intensity": "18.8", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "14.9", "population_density_per_km2": "48347", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.5526, "norm_pop": 0.2417, "norm_green": 0.6275, "HVI": 0.5173}, {"date": "2026-03-20", "locality": "Mayur Vihar Phase 2", "district": "East Delhi", "latitude": "28.615", "longitude": "77.305", "lst_celsius": "47.2", "air_temp_celsius": "27.9", "urban_heat_intensity": "19.3", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "16.0", "population_density_per_km2": "39996", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.5368, "norm_pop": 0.2, "norm_green": 0.6, "HVI": 0.4979}, {"date": "2026-03-20", "locality": "Sagarpur", "district": "South West Delhi", "latitude": "28.623", "longitude": "77.09", "lst_celsius": "47.0", "air_temp_celsius": "29.0", "urban_heat_intensity": "18.0", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "4.6", "population_density_per_km2": "97896", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.5263, "norm_pop": 0.4895, "norm_green": 0.885, "HVI": 0.6091}, {"date": "2026-03-20", "locality": "Burari", "district": "North Delhi", "latitude": "28.745", "longitude": "77.21", "lst_celsius": "46.9", "air_temp_celsius": "28.5", "urban_heat_intensity": "18.4", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "17.1", "population_density_per_km2": "41187", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.5211, "norm_pop": 0.2059, "norm_green": 0.5725, "HVI": 0.5631}, {"date": "2026-03-20", "locality": "Anand Vihar", "district": "East Delhi", "latitude": "28.647", "longitude": "77.316", "lst_celsius": "46.8", "air_temp_celsius": "28.9", "urban_heat_intensity": "17.9", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "20.8", "population_density_per_km2": "26576", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.5158, "norm_pop": 0.1329, "norm_green": 0.48, "HVI": 0.4531}, {"date": "2026-03-20", "locality": "Paschim Vihar", "district": "North West Delhi", "latitude": "28.674", "longitude": "77.096", "lst_celsius": "46.7", "air_temp_celsius": "27.0", "urban_heat_intensity": "19.7", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "18.2", "population_density_per_km2": "51973", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.5105, "norm_pop": 0.2599, "norm_green": 0.545, "HVI": 0.4897}, {"date": "2026-03-20", "locality": "Preet Vihar", "district": "East Delhi", "latitude": "28.6425", "longitude": "77.2905", "lst_celsius": "46.3", "air_temp_celsius": "27.6", "urban_heat_intensity": "18.7", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "16.1", "population_density_per_km2": "30165", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.4895, "norm_pop": 0.1508, "norm_green": 0.5975, "HVI": 0.471}, {"date": "2026-03-20", "locality": "Daryaganj", "district": "Central Delhi", "latitude": "28.6408", "longitude": "77.2362", "lst_celsius": "46.3", "air_temp_celsius": "29.8", "urban_heat_intensity": "16.5", "dominant_roof_material": "Tarpaulin/Plastic", "green_cover_pct": "10.8", "population_density_per_km2": "119256", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.95, "norm_temp": 0.4895, "norm_pop": 0.5963, "norm_green": 0.73, "HVI": 0.6741}, {"date": "2026-03-20", "locality": "Punjabi Bagh", "district": "North West Delhi", "latitude": "28.674", "longitude": "77.131", "lst_celsius": "46.2", "air_temp_celsius": "28.2", "urban_heat_intensity": "18.0", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "11.2", "population_density_per_km2": "40597", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.4842, "norm_pop": 0.203, "norm_green": 0.72, "HVI": 0.5041}, {"date": "2026-03-20", "locality": "Tilak Nagar", "district": "West Delhi", "latitude": "28.644", "longitude": "77.102", "lst_celsius": "46.2", "air_temp_celsius": "29.9", "urban_heat_intensity": "16.3", "dominant_roof_material": "Asbestos Sheet", "green_cover_pct": "5.7", "population_density_per_km2": "110406", "locality_type": "dense_urban", "data_source": "simulated", "roof_score": 0.85, "norm_temp": 0.4842, "norm_pop": 0.552, "norm_green": 0.8575, "HVI": 0.6639}, {"date": "2026-03-20", "locality": "Krishna Nagar", "district": "East Delhi", "latitude": "28.654", "longitude": "77.283", "lst_celsius": "46.1", "air_temp_celsius": "27.5", "urban_heat_intensity": "18.6", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "15.5", "population_density_per_km2": "63928", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.4789, "norm_pop": 0.3196, "norm_green": 0.6125, "HVI": 0.5041}, {"date": "2026-03-20", "locality": "Lajpat Nagar", "district": "South Delhi", "latitude": "28.5677", "longitude": "77.241", "lst_celsius": "46.0", "air_temp_celsius": "27.4", "urban_heat_intensity": "18.6", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "10.2", "population_density_per_km2": "26554", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.4737, "norm_pop": 0.1328, "norm_green": 0.745, "HVI": 0.4913}, {"date": "2026-03-20", "locality": "Moti Bagh", "district": "New Delhi", "latitude": "28.585", "longitude": "77.184", "lst_celsius": "45.9", "air_temp_celsius": "27.3", "urban_heat_intensity": "18.6", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "19.3", "population_density_per_km2": "33895", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.4684, "norm_pop": 0.1695, "norm_green": 0.5175, "HVI": 0.5263}, {"date": "2026-03-20", "locality": "RK Puram", "district": "New Delhi", "latitude": "28.564", "longitude": "77.179", "lst_celsius": "45.8", "air_temp_celsius": "27.6", "urban_heat_intensity": "18.2", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "18.6", "population_density_per_km2": "28987", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.4632, "norm_pop": 0.1449, "norm_green": 0.535, "HVI": 0.5231}, {"date": "2026-03-20", "locality": "Mayur Vihar Phase 3", "district": "East Delhi", "latitude": "28.625", "longitude": "77.315", "lst_celsius": "45.7", "air_temp_celsius": "27.5", "urban_heat_intensity": "18.2", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "15.4", "population_density_per_km2": "37487", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.4579, "norm_pop": 0.1874, "norm_green": 0.615, "HVI": 0.4708}, {"date": "2026-03-20", "locality": "Timarpur", "district": "North Delhi", "latitude": "28.705", "longitude": "77.215", "lst_celsius": "45.6", "air_temp_celsius": "26.0", "urban_heat_intensity": "19.6", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "21.5", "population_density_per_km2": "55470", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.4526, "norm_pop": 0.2773, "norm_green": 0.4625, "HVI": 0.4064}, {"date": "2026-03-20", "locality": "Kirti Nagar", "district": "Central Delhi", "latitude": "28.66", "longitude": "77.154", "lst_celsius": "45.5", "air_temp_celsius": "27.0", "urban_heat_intensity": "18.5", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "15.9", "population_density_per_km2": "62022", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.4474, "norm_pop": 0.3101, "norm_green": 0.6025, "HVI": 0.5641}, {"date": "2026-03-20", "locality": "Vikaspuri", "district": "West Delhi", "latitude": "28.641", "longitude": "77.07", "lst_celsius": "45.5", "air_temp_celsius": "27.2", "urban_heat_intensity": "18.3", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "19.9", "population_density_per_km2": "55486", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.4474, "norm_pop": 0.2774, "norm_green": 0.5025, "HVI": 0.4626}, {"date": "2026-03-20", "locality": "Mukherjee Nagar", "district": "North Delhi", "latitude": "28.705", "longitude": "77.208", "lst_celsius": "45.2", "air_temp_celsius": "28.1", "urban_heat_intensity": "17.1", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "14.2", "population_density_per_km2": "45766", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.4316, "norm_pop": 0.2288, "norm_green": 0.645, "HVI": 0.5508}, {"date": "2026-03-20", "locality": "Vivek Vihar", "district": "East Delhi", "latitude": "28.6703", "longitude": "77.3152", "lst_celsius": "45.0", "air_temp_celsius": "27.4", "urban_heat_intensity": "17.6", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "12.2", "population_density_per_km2": "48634", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.4211, "norm_pop": 0.2432, "norm_green": 0.695, "HVI": 0.485}, {"date": "2026-03-20", "locality": "Ashok Vihar", "district": "North West Delhi", "latitude": "28.697", "longitude": "77.178", "lst_celsius": "45.0", "air_temp_celsius": "26.1", "urban_heat_intensity": "18.9", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "20.2", "population_density_per_km2": "52324", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.4211, "norm_pop": 0.2616, "norm_green": 0.495, "HVI": 0.3987}, {"date": "2026-03-20", "locality": "Jasola", "district": "South East Delhi", "latitude": "28.541", "longitude": "77.288", "lst_celsius": "45.0", "air_temp_celsius": "27.3", "urban_heat_intensity": "17.7", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "10.2", "population_density_per_km2": "28360", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.4211, "norm_pop": 0.1418, "norm_green": 0.745, "HVI": 0.4247}, {"date": "2026-03-20", "locality": "Karkardooma", "district": "East Delhi", "latitude": "28.658", "longitude": "77.301", "lst_celsius": "44.7", "air_temp_celsius": "27.5", "urban_heat_intensity": "17.2", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "17.8", "population_density_per_km2": "46534", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.4053, "norm_pop": 0.2327, "norm_green": 0.555, "HVI": 0.4494}, {"date": "2026-03-20", "locality": "Mahipalpur", "district": "South West Delhi", "latitude": "28.562", "longitude": "77.118", "lst_celsius": "44.7", "air_temp_celsius": "26.3", "urban_heat_intensity": "18.4", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "18.5", "population_density_per_km2": "14818", "locality_type": "institutional", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.4053, "norm_pop": 0.0741, "norm_green": 0.5375, "HVI": 0.4142}, {"date": "2026-03-20", "locality": "Adarsh Nagar", "district": "North Delhi", "latitude": "28.723", "longitude": "77.178", "lst_celsius": "44.6", "air_temp_celsius": "26.8", "urban_heat_intensity": "17.8", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "13.7", "population_density_per_km2": "49255", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.4, "norm_pop": 0.2463, "norm_green": 0.6575, "HVI": 0.4708}, {"date": "2026-03-20", "locality": "Rajinder Nagar", "district": "Central Delhi", "latitude": "28.6411", "longitude": "77.183", "lst_celsius": "44.5", "air_temp_celsius": "27.6", "urban_heat_intensity": "16.9", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "17.7", "population_density_per_km2": "40352", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.3947, "norm_pop": 0.2018, "norm_green": 0.5575, "HVI": 0.44}, {"date": "2026-03-20", "locality": "Azadpur", "district": "North Delhi", "latitude": "28.715", "longitude": "77.187", "lst_celsius": "44.4", "air_temp_celsius": "25.3", "urban_heat_intensity": "19.1", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "20.9", "population_density_per_km2": "57036", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.3895, "norm_pop": 0.2852, "norm_green": 0.4775, "HVI": 0.3889}, {"date": "2026-03-20", "locality": "Connaught Place", "district": "New Delhi", "latitude": "28.6315", "longitude": "77.2167", "lst_celsius": "44.4", "air_temp_celsius": "27.1", "urban_heat_intensity": "17.3", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "21.5", "population_density_per_km2": "18697", "locality_type": "institutional", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.3895, "norm_pop": 0.0935, "norm_green": 0.4625, "HVI": 0.3475}, {"date": "2026-03-20", "locality": "Sukhdev Vihar", "district": "South East Delhi", "latitude": "28.549", "longitude": "77.28", "lst_celsius": "44.4", "air_temp_celsius": "26.0", "urban_heat_intensity": "18.4", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "20.7", "population_density_per_km2": "49715", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.3895, "norm_pop": 0.2486, "norm_green": 0.4825, "HVI": 0.4325}, {"date": "2026-03-20", "locality": "Mayur Vihar Phase 1", "district": "East Delhi", "latitude": "28.608", "longitude": "77.295", "lst_celsius": "44.3", "air_temp_celsius": "27.1", "urban_heat_intensity": "17.2", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "11.9", "population_density_per_km2": "31155", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.3842, "norm_pop": 0.1558, "norm_green": 0.7025, "HVI": 0.5311}, {"date": "2026-03-20", "locality": "Rohini Sector 1-5", "district": "North West Delhi", "latitude": "28.745", "longitude": "77.115", "lst_celsius": "44.1", "air_temp_celsius": "27.4", "urban_heat_intensity": "16.7", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "18.2", "population_density_per_km2": "26266", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.3737, "norm_pop": 0.1313, "norm_green": 0.545, "HVI": 0.4161}, {"date": "2026-03-20", "locality": "Nehru Place", "district": "South Delhi", "latitude": "28.5488", "longitude": "77.251", "lst_celsius": "44.1", "air_temp_celsius": "28.0", "urban_heat_intensity": "16.1", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "10.1", "population_density_per_km2": "53588", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.3737, "norm_pop": 0.2679, "norm_green": 0.7475, "HVI": 0.5589}, {"date": "2026-03-20", "locality": "Karol Bagh", "district": "Central Delhi", "latitude": "28.6519", "longitude": "77.1909", "lst_celsius": "44.0", "air_temp_celsius": "27.9", "urban_heat_intensity": "16.1", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "21.5", "population_density_per_km2": "46594", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.3684, "norm_pop": 0.233, "norm_green": 0.4625, "HVI": 0.368}, {"date": "2026-03-20", "locality": "Patel Nagar", "district": "Central Delhi", "latitude": "28.656", "longitude": "77.172", "lst_celsius": "44.0", "air_temp_celsius": "27.6", "urban_heat_intensity": "16.4", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "19.2", "population_density_per_km2": "50249", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.3684, "norm_pop": 0.2512, "norm_green": 0.52, "HVI": 0.4332}, {"date": "2026-03-20", "locality": "Sarita Vihar", "district": "South East Delhi", "latitude": "28.527", "longitude": "77.289", "lst_celsius": "43.9", "air_temp_celsius": "26.3", "urban_heat_intensity": "17.6", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "18.6", "population_density_per_km2": "48618", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.3632, "norm_pop": 0.2431, "norm_green": 0.535, "HVI": 0.3827}, {"date": "2026-03-20", "locality": "Dilshad Garden", "district": "East Delhi", "latitude": "28.682", "longitude": "77.317", "lst_celsius": "43.8", "air_temp_celsius": "28.9", "urban_heat_intensity": "14.9", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "19.5", "population_density_per_km2": "28219", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.3579, "norm_pop": 0.1411, "norm_green": 0.5125, "HVI": 0.481}, {"date": "2026-03-20", "locality": "Netaji Nagar", "district": "New Delhi", "latitude": "28.574", "longitude": "77.191", "lst_celsius": "43.6", "air_temp_celsius": "28.1", "urban_heat_intensity": "15.5", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "12.1", "population_density_per_km2": "60795", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.3474, "norm_pop": 0.304, "norm_green": 0.6975, "HVI": 0.5469}, {"date": "2026-03-20", "locality": "Malviya Nagar", "district": "South Delhi", "latitude": "28.533", "longitude": "77.207", "lst_celsius": "43.6", "air_temp_celsius": "26.3", "urban_heat_intensity": "17.3", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "26.5", "population_density_per_km2": "20812", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.3474, "norm_pop": 0.1041, "norm_green": 0.3375, "HVI": 0.3599}, {"date": "2026-03-20", "locality": "Sarai Pipal Thala", "district": "North Delhi", "latitude": "28.728", "longitude": "77.193", "lst_celsius": "43.3", "air_temp_celsius": "28.1", "urban_heat_intensity": "15.2", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "20.2", "population_density_per_km2": "15946", "locality_type": "institutional", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.3316, "norm_pop": 0.0797, "norm_green": 0.495, "HVI": 0.381}, {"date": "2026-03-20", "locality": "INA Colony", "district": "New Delhi", "latitude": "28.5776", "longitude": "77.2105", "lst_celsius": "43.2", "air_temp_celsius": "26.8", "urban_heat_intensity": "16.4", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "14.0", "population_density_per_km2": "26039", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.3263, "norm_pop": 0.1302, "norm_green": 0.65, "HVI": 0.4202}, {"date": "2026-03-20", "locality": "IP Extension", "district": "East Delhi", "latitude": "28.625", "longitude": "77.306", "lst_celsius": "42.9", "air_temp_celsius": "27.4", "urban_heat_intensity": "15.5", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "13.7", "population_density_per_km2": "30351", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.3105, "norm_pop": 0.1518, "norm_green": 0.6575, "HVI": 0.4205}, {"date": "2026-03-20", "locality": "Netaji Subhash Place", "district": "North West Delhi", "latitude": "28.698", "longitude": "77.148", "lst_celsius": "42.9", "air_temp_celsius": "28.0", "urban_heat_intensity": "14.9", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "10.6", "population_density_per_km2": "53767", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.3105, "norm_pop": 0.2688, "norm_green": 0.735, "HVI": 0.4595}, {"date": "2026-03-20", "locality": "Sarojini Nagar", "district": "New Delhi", "latitude": "28.5765", "longitude": "77.1971", "lst_celsius": "42.8", "air_temp_celsius": "27.7", "urban_heat_intensity": "15.1", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "14.6", "population_density_per_km2": "45661", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.3053, "norm_pop": 0.2283, "norm_green": 0.635, "HVI": 0.4295}, {"date": "2026-03-20", "locality": "Tagore Garden", "district": "West Delhi", "latitude": "28.654", "longitude": "77.112", "lst_celsius": "42.7", "air_temp_celsius": "27.7", "urban_heat_intensity": "15.0", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "10.7", "population_density_per_km2": "50416", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.3, "norm_pop": 0.2521, "norm_green": 0.7325, "HVI": 0.4519}, {"date": "2026-03-20", "locality": "Palam", "district": "South West Delhi", "latitude": "28.584", "longitude": "77.073", "lst_celsius": "42.5", "air_temp_celsius": "27.6", "urban_heat_intensity": "14.9", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "13.2", "population_density_per_km2": "19504", "locality_type": "institutional", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.2895, "norm_pop": 0.0975, "norm_green": 0.67, "HVI": 0.4048}, {"date": "2026-03-20", "locality": "Green Park", "district": "South Delhi", "latitude": "28.559", "longitude": "77.207", "lst_celsius": "42.4", "air_temp_celsius": "27.8", "urban_heat_intensity": "14.6", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "38.8", "population_density_per_km2": "12682", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.2842, "norm_pop": 0.0634, "norm_green": 0.03, "HVI": 0.2182}, {"date": "2026-03-20", "locality": "Jamia Nagar", "district": "South East Delhi", "latitude": "28.559", "longitude": "77.288", "lst_celsius": "42.2", "air_temp_celsius": "27.8", "urban_heat_intensity": "14.4", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "16.1", "population_density_per_km2": "54528", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.2737, "norm_pop": 0.2726, "norm_green": 0.5975, "HVI": 0.4198}, {"date": "2026-03-20", "locality": "Nauroji Nagar", "district": "New Delhi", "latitude": "28.568", "longitude": "77.198", "lst_celsius": "42.1", "air_temp_celsius": "28.0", "urban_heat_intensity": "14.1", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "20.2", "population_density_per_km2": "61097", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.2684, "norm_pop": 0.3055, "norm_green": 0.495, "HVI": 0.479}, {"date": "2026-03-20", "locality": "Laxmi Nagar", "district": "East Delhi", "latitude": "28.6317", "longitude": "77.2774", "lst_celsius": "42.0", "air_temp_celsius": "27.8", "urban_heat_intensity": "14.2", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "12.4", "population_density_per_km2": "53710", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.2632, "norm_pop": 0.2686, "norm_green": 0.69, "HVI": 0.4338}, {"date": "2026-03-20", "locality": "Hauz Khas", "district": "South Delhi", "latitude": "28.5494", "longitude": "77.2001", "lst_celsius": "41.6", "air_temp_celsius": "25.4", "urban_heat_intensity": "16.2", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "32.7", "population_density_per_km2": "9370", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.2421, "norm_pop": 0.0469, "norm_green": 0.1825, "HVI": 0.2806}, {"date": "2026-03-20", "locality": "Mehrauli", "district": "South Delhi", "latitude": "28.522", "longitude": "77.187", "lst_celsius": "41.5", "air_temp_celsius": "26.7", "urban_heat_intensity": "14.8", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "18.5", "population_density_per_km2": "23368", "locality_type": "institutional", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.2368, "norm_pop": 0.1168, "norm_green": 0.5375, "HVI": 0.3638}, {"date": "2026-03-20", "locality": "Lodi Colony", "district": "New Delhi", "latitude": "28.5918", "longitude": "77.2275", "lst_celsius": "41.4", "air_temp_celsius": "26.6", "urban_heat_intensity": "14.8", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "32.9", "population_density_per_km2": "20672", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.2316, "norm_pop": 0.1034, "norm_green": 0.1775, "HVI": 0.2872}, {"date": "2026-03-20", "locality": "Saket", "district": "South Delhi", "latitude": "28.5245", "longitude": "77.2066", "lst_celsius": "41.4", "air_temp_celsius": "26.9", "urban_heat_intensity": "14.5", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "21.8", "population_density_per_km2": "15903", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.2316, "norm_pop": 0.0795, "norm_green": 0.455, "HVI": 0.338}, {"date": "2026-03-20", "locality": "Civil Lines", "district": "North Delhi", "latitude": "28.6843", "longitude": "77.2219", "lst_celsius": "41.0", "air_temp_celsius": "26.4", "urban_heat_intensity": "14.6", "dominant_roof_material": "Metal Sheet", "green_cover_pct": "20.6", "population_density_per_km2": "19278", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.9, "norm_temp": 0.2105, "norm_pop": 0.0964, "norm_green": 0.485, "HVI": 0.415}, {"date": "2026-03-20", "locality": "Model Town", "district": "North Delhi", "latitude": "28.713", "longitude": "77.196", "lst_celsius": "41.0", "air_temp_celsius": "25.6", "urban_heat_intensity": "15.4", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "29.5", "population_density_per_km2": "9016", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.2105, "norm_pop": 0.0451, "norm_green": 0.2625, "HVI": 0.2852}, {"date": "2026-03-20", "locality": "Pitampura", "district": "North West Delhi", "latitude": "28.702", "longitude": "77.13", "lst_celsius": "41.0", "air_temp_celsius": "28.7", "urban_heat_intensity": "12.3", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "15.6", "population_density_per_km2": "55514", "locality_type": "planned", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.2105, "norm_pop": 0.2776, "norm_green": 0.61, "HVI": 0.4012}, {"date": "2026-03-20", "locality": "Rohini Sector 15-17", "district": "North West Delhi", "latitude": "28.765", "longitude": "77.08", "lst_celsius": "40.3", "air_temp_celsius": "26.1", "urban_heat_intensity": "14.2", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "32.6", "population_density_per_km2": "14307", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.1737, "norm_pop": 0.0715, "norm_green": 0.185, "HVI": 0.2621}, {"date": "2026-03-20", "locality": "New Friends Colony", "district": "South East Delhi", "latitude": "28.562", "longitude": "77.277", "lst_celsius": "40.2", "air_temp_celsius": "25.7", "urban_heat_intensity": "14.5", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "24.1", "population_density_per_km2": "16925", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.1684, "norm_pop": 0.0846, "norm_green": 0.3975, "HVI": 0.2554}, {"date": "2026-03-20", "locality": "Chanakyapuri", "district": "New Delhi", "latitude": "28.5997", "longitude": "77.1886", "lst_celsius": "40.0", "air_temp_celsius": "26.5", "urban_heat_intensity": "13.5", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "33.5", "population_density_per_km2": "11366", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.1579, "norm_pop": 0.0568, "norm_green": 0.1625, "HVI": 0.2491}, {"date": "2026-03-20", "locality": "Safdarjung Enclave", "district": "New Delhi", "latitude": "28.568", "longitude": "77.205", "lst_celsius": "40.0", "air_temp_celsius": "25.2", "urban_heat_intensity": "14.8", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "30.3", "population_density_per_km2": "11424", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.1579, "norm_pop": 0.0571, "norm_green": 0.2425, "HVI": 0.2652}, {"date": "2026-03-20", "locality": "Dwarka Sector 1-10", "district": "West Delhi", "latitude": "28.595", "longitude": "77.046", "lst_celsius": "39.8", "air_temp_celsius": "26.0", "urban_heat_intensity": "13.8", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "21.2", "population_density_per_km2": "8285", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.1474, "norm_pop": 0.0414, "norm_green": 0.47, "HVI": 0.3039}, {"date": "2026-03-20", "locality": "Vasant Vihar", "district": "South Delhi", "latitude": "28.557", "longitude": "77.166", "lst_celsius": "39.8", "air_temp_celsius": "26.6", "urban_heat_intensity": "13.2", "dominant_roof_material": "Glass/Polycarbonate", "green_cover_pct": "29.5", "population_density_per_km2": "21425", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.5, "norm_temp": 0.1474, "norm_pop": 0.1071, "norm_green": 0.2625, "HVI": 0.2505}, {"date": "2026-03-20", "locality": "Vasant Kunj", "district": "South Delhi", "latitude": "28.521", "longitude": "77.157", "lst_celsius": "39.2", "air_temp_celsius": "26.9", "urban_heat_intensity": "12.3", "dominant_roof_material": "Green Roof", "green_cover_pct": "32.1", "population_density_per_km2": "8692", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.1, "norm_temp": 0.1158, "norm_pop": 0.0435, "norm_green": 0.1975, "HVI": 0.1137}, {"date": "2026-03-20", "locality": "Dwarka Sector 11-23", "district": "West Delhi", "latitude": "28.572", "longitude": "77.03", "lst_celsius": "39.1", "air_temp_celsius": "25.3", "urban_heat_intensity": "13.8", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "22.6", "population_density_per_km2": "14450", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.1105, "norm_pop": 0.0722, "norm_green": 0.435, "HVI": 0.2401}, {"date": "2026-03-20", "locality": "Rohini Sector 6-11", "district": "North West Delhi", "latitude": "28.755", "longitude": "77.095", "lst_celsius": "38.8", "air_temp_celsius": "25.2", "urban_heat_intensity": "13.6", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "24.0", "population_density_per_km2": "13507", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.0947, "norm_pop": 0.0675, "norm_green": 0.4, "HVI": 0.2767}, {"date": "2026-03-20", "locality": "Defence Colony", "district": "South Delhi", "latitude": "28.573", "longitude": "77.231", "lst_celsius": "38.7", "air_temp_celsius": "26.3", "urban_heat_intensity": "12.4", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "28.2", "population_density_per_km2": "15396", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.0895, "norm_pop": 0.077, "norm_green": 0.295, "HVI": 0.2557}, {"date": "2026-03-20", "locality": "Greater Kailash 2", "district": "South Delhi", "latitude": "28.536", "longitude": "77.241", "lst_celsius": "38.6", "air_temp_celsius": "26.6", "urban_heat_intensity": "12.0", "dominant_roof_material": "Clay Tiles", "green_cover_pct": "37.4", "population_density_per_km2": "18663", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.4, "norm_temp": 0.0842, "norm_pop": 0.0933, "norm_green": 0.065, "HVI": 0.1611}, {"date": "2026-03-20", "locality": "Greater Kailash 1", "district": "South Delhi", "latitude": "28.5427", "longitude": "77.234", "lst_celsius": "38.0", "air_temp_celsius": "25.8", "urban_heat_intensity": "12.2", "dominant_roof_material": "RCC Concrete", "green_cover_pct": "29.6", "population_density_per_km2": "13314", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.6, "norm_temp": 0.0526, "norm_pop": 0.0666, "norm_green": 0.26, "HVI": 0.2337}, {"date": "2026-03-20", "locality": "Shalimar Bagh", "district": "North Delhi", "latitude": "28.72", "longitude": "77.155", "lst_celsius": "37.4", "air_temp_celsius": "25.1", "urban_heat_intensity": "12.3", "dominant_roof_material": "Green Roof", "green_cover_pct": "32.5", "population_density_per_km2": "15939", "locality_type": "affluent", "data_source": "simulated", "roof_score": 0.1, "norm_temp": 0.0211, "norm_pop": 0.0797, "norm_green": 0.1875, "HVI": 0.0858}];
+
+loadData();
+</script>
+</body>
+</html>

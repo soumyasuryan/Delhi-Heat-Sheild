@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 30 20% 96%;
+    --foreground: 20 30% 12%;
+
+    --card: 30 30% 98%;
+    --card-foreground: 20 30% 12%;
+
+    --popover: 30 30% 98%;
+    --popover-foreground: 20 30% 12%;
+
+    --primary: 16 65% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 28 25% 90%;
+    --secondary-foreground: 20 30% 20%;
+
+    --muted: 30 15% 91%;
+    --muted-foreground: 20 10% 45%;
+
+    --accent: 16 65% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 28 20% 85%;
+    --input: 28 20% 85%;
+    --ring: 16 65% 55%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 30 25% 94%;
+    --sidebar-foreground: 20 30% 15%;
+    --sidebar-primary: 16 65% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 28 25% 88%;
+    --sidebar-accent-foreground: 20 30% 15%;
+    --sidebar-border: 28 20% 82%;
+    --sidebar-ring: 16 65% 55%;
+
+    /* Custom tokens */
+    --glass-bg: 30 30% 97%;
+    --glass-border: 28 20% 82%;
+    --gradient-hero: linear-gradient(135deg, hsl(30 20% 96%) 0%, hsl(28 30% 92%) 50%, hsl(24 25% 94%) 100%);
+    --hvi-low: 142 71% 40%;
+    --hvi-moderate: 45 90% 48%;
+    --hvi-high: 25 90% 50%;
+    --hvi-critical: 0 72% 51%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-glass-border rounded-xl shadow-sm;
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300 hover:bg-card hover:border-primary/40 hover:shadow-md;
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[hsl(16,65%,50%)] to-[hsl(30,80%,55%)];
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 30px -8px hsl(var(--primary) / 0.35);
+  }
+}
